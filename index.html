@@ -1,0 +1,1042 @@
+<!doctype html>
+<html lang="pt-BR" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ELLEVEN Sports Performance</title>
+  <script src="https://cdn.tailwindcss.com/3.4.17"></script>
+  <script src="/_sdk/data_sdk.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Outfit', sans-serif; }
+    .gradient-bg { background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%); }
+    .card-glass { background: rgba(30, 41, 59, 0.8); backdrop-filter: blur(10px); border: 1px solid rgba(99, 102, 241, 0.2); }
+    .accent-gradient { background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%); }
+    .risk-low { background: linear-gradient(135deg, #10b981, #059669); }
+    .risk-medium { background: linear-gradient(135deg, #f59e0b, #d97706); }
+    .risk-high { background: linear-gradient(135deg, #ef4444, #dc2626); }
+    .body-map { position: relative; }
+    .body-part { cursor: pointer; transition: all 0.2s; }
+    .body-part:hover { transform: scale(1.1); }
+    .body-part.selected { filter: drop-shadow(0 0 8px #ef4444); }
+    input[type="range"] { -webkit-appearance: none; background: transparent; }
+    input[type="range"]::-webkit-slider-track { height: 8px; border-radius: 4px; background: #334155; }
+    input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; border-radius: 50%; background: #6366f1; margin-top: -6px; cursor: pointer; }
+    .fade-in { animation: fadeIn 0.3s ease-out; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+    .pulse-dot { animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+  </style>
+  <style>body { box-sizing: border-box; }</style>
+ </head>
+ <body class="h-full gradient-bg text-white overflow-auto">
+  <div id="app" class="min-h-full w-full">
+   <!-- Loading State -->
+   <div id="loading-screen" class="flex items-center justify-center min-h-full">
+    <div class="text-center">
+     <div class="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+     <p class="text-slate-400">Carregando sistema...</p>
+    </div>
+   </div><!-- Coach Dashboard -->
+   <div id="coach-dashboard" class="hidden p-4 md:p-6 max-w-7xl mx-auto">
+    <header class="mb-8">
+     <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+      <div>
+       <h1 id="main-title" class="text-3xl md:text-4xl font-bold bg-gradient-to-r from-indigo-400 to-purple-400 bg-clip-text text-transparent">ELLEVEN Sports</h1>
+       <p id="coach-greeting" class="text-slate-400 mt-1">Painel do Técnico</p>
+      </div>
+      <div class="flex gap-3">
+       <button onclick="showAddAthleteModal()" class="accent-gradient px-4 py-2 rounded-xl font-semibold hover:opacity-90 transition flex items-center gap-2">
+        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+        </svg> Novo Atleta </button>
+      </div>
+     </div>
+    </header><!-- Stats Overview -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+     <div class="card-glass rounded-2xl p-4">
+      <p class="text-slate-400 text-sm">Total Atletas</p>
+      <p id="stat-athletes" class="text-2xl font-bold text-white">0</p>
+     </div>
+     <div class="card-glass rounded-2xl p-4">
+      <p class="text-slate-400 text-sm">Respostas Hoje</p>
+      <p id="stat-responses" class="text-2xl font-bold text-indigo-400">0</p>
+     </div>
+     <div class="card-glass rounded-2xl p-4">
+      <p class="text-slate-400 text-sm">Alertas RED-S</p>
+      <p id="stat-reds" class="text-2xl font-bold text-amber-400">0</p>
+     </div>
+     <div class="card-glass rounded-2xl p-4">
+      <p class="text-slate-400 text-sm">Wellness Médio</p>
+      <p id="stat-wellness" class="text-2xl font-bold text-emerald-400">-</p>
+     </div>
+    </div><!-- Athletes List -->
+    <div class="card-glass rounded-2xl p-6">
+     <div class="flex items-center justify-between mb-6">
+      <h2 class="text-xl font-semibold">Meus Atletas</h2>
+      <div class="flex gap-2">
+       <select id="filter-sport" onchange="filterAthletes()" class="bg-slate-700 border border-slate-600 rounded-lg px-3 py-2 text-sm"> <option value="">Todas Modalidades</option> </select>
+      </div>
+     </div>
+     <div id="athletes-list" class="space-y-3">
+      <p class="text-slate-400 text-center py-8">Nenhum atleta cadastrado. Clique em "Novo Atleta" para começar.</p>
+     </div>
+    </div><!-- Athlete Detail Modal -->
+    <div id="athlete-detail-modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+     <div class="card-glass rounded-2xl w-full max-w-4xl max-h-[90%] overflow-y-auto">
+      <div class="p-6">
+       <div class="flex items-center justify-between mb-6">
+        <h2 id="detail-athlete-name" class="text-2xl font-bold">Nome do Atleta</h2><button onclick="closeAthleteDetail()" class="text-slate-400 hover:text-white">
+         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+         </svg></button>
+       </div>
+       <div id="athlete-detail-content"></div>
+      </div>
+     </div>
+    </div><!-- Add Athlete Modal -->
+    <div id="add-athlete-modal" class="hidden fixed inset-0 bg-black/70 flex items-center justify-center p-4 z-50">
+     <div class="card-glass rounded-2xl w-full max-w-md">
+      <div class="p-6">
+       <h2 class="text-xl font-bold mb-6">Cadastrar Novo Atleta</h2>
+       <form id="add-athlete-form" class="space-y-4">
+        <div>
+         <label class="block text-sm text-slate-400 mb-1">Nome Completo</label> <input type="text" id="new-athlete-name" required class="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 focus:border-indigo-500 focus:outline-none">
+        </div>
+        <div>
+         <label class="block text-sm text-slate-400 mb-1">Modalidade</label> <select id="new-athlete-sport" required class="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 focus:border-indigo-500 focus:outline-none"> <option value="">Selecione...</option> <option value="futebol">Futebol</option> <option value="volei">Vôlei</option> <option value="basquete">Basquete</option> <option value="natacao">Natação</option> <option value="atletismo">Atletismo</option> <option value="crossfit">CrossFit</option> <option value="musculacao">Musculação</option> <option value="ciclismo">Ciclismo</option> <option value="corrida">Corrida</option> <option value="artes_marciais">Artes Marciais</option> <option value="ginastica">Ginástica</option> <option value="tenis">Tênis</option> <option value="handebol">Handebol</option> <option value="rugby">Rugby</option> <option value="outro">Outro</option> </select>
+        </div>
+        <div>
+         <label class="block text-sm text-slate-400 mb-1">Sexo</label> <select id="new-athlete-gender" required class="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 focus:border-indigo-500 focus:outline-none"> <option value="">Selecione...</option> <option value="masculino">Masculino</option> <option value="feminino">Feminino</option> </select>
+        </div>
+        <div>
+         <label class="block text-sm text-slate-400 mb-1">Peso (kg)</label> <input type="number" id="new-athlete-weight" step="0.1" required class="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 focus:border-indigo-500 focus:outline-none">
+        </div>
+        <div class="flex gap-3 pt-4">
+         <button type="button" onclick="closeAddAthleteModal()" class="flex-1 bg-slate-700 px-4 py-3 rounded-xl font-semibold hover:bg-slate-600 transition">Cancelar</button> <button type="submit" id="add-athlete-btn" class="flex-1 accent-gradient px-4 py-3 rounded-xl font-semibold hover:opacity-90 transition">Cadastrar</button>
+        </div>
+       </form>
+      </div>
+     </div>
+    </div>
+   </div><!-- Athlete Questionnaire -->
+   <div id="athlete-questionnaire" class="hidden p-4 md:p-6 max-w-2xl mx-auto">
+    <header class="text-center mb-8">
+     <div class="w-16 h-16 accent-gradient rounded-2xl flex items-center justify-center mx-auto mb-4">
+      <svg class="w-8 h-8" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+      </svg>
+     </div>
+     <h1 class="text-2xl font-bold">Questionário Diário</h1>
+     <p id="questionnaire-athlete-name" class="text-slate-400 mt-1">Bem-vindo, Atleta</p>
+    </header><!-- Progress Bar -->
+    <div class="mb-8">
+     <div class="flex justify-between text-sm text-slate-400 mb-2">
+      <span>Progresso</span> <span id="progress-text">0%</span>
+     </div>
+     <div class="h-2 bg-slate-700 rounded-full overflow-hidden">
+      <div id="progress-bar" class="h-full accent-gradient transition-all duration-300" style="width: 0%"></div>
+     </div>
+    </div><!-- Step 1: Wellness -->
+    <div id="step-1" class="questionnaire-step card-glass rounded-2xl p-6 mb-4">
+     <h2 class="text-lg font-semibold mb-6 flex items-center gap-2"><span class="w-8 h-8 accent-gradient rounded-lg flex items-center justify-center text-sm font-bold">1</span> Bem-Estar Geral</h2>
+     <div class="space-y-6">
+      <div>
+       <div class="flex justify-between mb-2">
+        <label class="text-slate-300">Qualidade do Sono</label> <span id="sleep-quality-value" class="text-indigo-400 font-semibold">5</span>
+       </div><input type="range" id="sleep-quality" min="1" max="10" value="5" class="w-full" oninput="updateSliderValue('sleep-quality')">
+       <div class="flex justify-between text-xs text-slate-500 mt-1"><span>Péssimo</span><span>Excelente</span>
+       </div>
+      </div>
+      <div>
+       <label class="text-slate-300 block mb-2">Horas de Sono</label> <input type="number" id="sleep-hours" min="0" max="14" step="0.5" value="7" class="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 focus:border-indigo-500 focus:outline-none">
+      </div>
+      <div>
+       <div class="flex justify-between mb-2">
+        <label class="text-slate-300">Nível de Fadiga</label> <span id="fatigue-value" class="text-indigo-400 font-semibold">5</span>
+       </div><input type="range" id="fatigue" min="1" max="10" value="5" class="w-full" oninput="updateSliderValue('fatigue')">
+       <div class="flex justify-between text-xs text-slate-500 mt-1"><span>Descansado</span><span>Exausto</span>
+       </div>
+      </div>
+      <div>
+       <div class="flex justify-between mb-2">
+        <label class="text-slate-300">Nível de Estresse</label> <span id="stress-value" class="text-indigo-400 font-semibold">5</span>
+       </div><input type="range" id="stress" min="1" max="10" value="5" class="w-full" oninput="updateSliderValue('stress')">
+       <div class="flex justify-between text-xs text-slate-500 mt-1"><span>Relaxado</span><span>Muito Estressado</span>
+       </div>
+      </div>
+      <div>
+       <div class="flex justify-between mb-2">
+        <label class="text-slate-300">Dor Muscular</label> <span id="muscle-soreness-value" class="text-indigo-400 font-semibold">5</span>
+       </div><input type="range" id="muscle-soreness" min="1" max="10" value="5" class="w-full" oninput="updateSliderValue('muscle-soreness')">
+       <div class="flex justify-between text-xs text-slate-500 mt-1"><span>Sem Dor</span><span>Dor Intensa</span>
+       </div>
+      </div>
+      <div>
+       <div class="flex justify-between mb-2">
+        <label class="text-slate-300">Humor</label> <span id="mood-value" class="text-indigo-400 font-semibold">5</span>
+       </div><input type="range" id="mood" min="1" max="10" value="5" class="w-full" oninput="updateSliderValue('mood')">
+       <div class="flex justify-between text-xs text-slate-500 mt-1"><span>Muito Mal</span><span>Muito Bem</span>
+       </div>
+      </div>
+     </div><button onclick="nextStep(2)" class="w-full accent-gradient py-3 rounded-xl font-semibold mt-6 hover:opacity-90 transition">Continuar</button>
+    </div><!-- Step 2: Body Map -->
+    <div id="step-2" class="questionnaire-step hidden card-glass rounded-2xl p-6 mb-4">
+     <h2 class="text-lg font-semibold mb-6 flex items-center gap-2"><span class="w-8 h-8 accent-gradient rounded-lg flex items-center justify-center text-sm font-bold">2</span> Mapa Corporal de Dor</h2>
+     <p class="text-slate-400 text-sm mb-4">Toque nas áreas onde sente dor ou desconforto:</p>
+     <div class="flex justify-center mb-6">
+      <svg id="body-map-svg" viewbox="0 0 200 400" class="w-48 h-auto">
+       <!-- Body outline --> <ellipse cx="100" cy="35" rx="25" ry="30" fill="#475569" class="body-part" data-part="cabeca" onclick="toggleBodyPart(this)" /> <rect x="85" y="65" width="30" height="20" rx="5" fill="#475569" class="body-part" data-part="pescoco" onclick="toggleBodyPart(this)" /> <rect x="60" y="85" width="80" height="70" rx="10" fill="#475569" class="body-part" data-part="torso" onclick="toggleBodyPart(this)" /> <rect x="30" y="85" width="30" height="60" rx="8" fill="#475569" class="body-part" data-part="braco_esq" onclick="toggleBodyPart(this)" /> <rect x="140" y="85" width="30" height="60" rx="8" fill="#475569" class="body-part" data-part="braco_dir" onclick="toggleBodyPart(this)" /> <rect x="25" y="145" width="25" height="30" rx="5" fill="#475569" class="body-part" data-part="antebraco_esq" onclick="toggleBodyPart(this)" /> <rect x="150" y="145" width="25" height="30" rx="5" fill="#475569" class="body-part" data-part="antebraco_dir" onclick="toggleBodyPart(this)" /> <ellipse cx="37" cy="185" rx="12" ry="15" fill="#475569" class="body-part" data-part="mao_esq" onclick="toggleBodyPart(this)" /> <ellipse cx="163" cy="185" rx="12" ry="15" fill="#475569" class="body-part" data-part="mao_dir" onclick="toggleBodyPart(this)" /> <rect x="60" y="155" width="80" height="50" rx="10" fill="#475569" class="body-part" data-part="quadril" onclick="toggleBodyPart(this)" /> <rect x="60" y="205" width="35" height="80" rx="8" fill="#475569" class="body-part" data-part="coxa_esq" onclick="toggleBodyPart(this)" /> <rect x="105" y="205" width="35" height="80" rx="8" fill="#475569" class="body-part" data-part="coxa_dir" onclick="toggleBodyPart(this)" /> <rect x="62" y="285" width="30" height="70" rx="6" fill="#475569" class="body-part" data-part="panturrilha_esq" onclick="toggleBodyPart(this)" /> <rect x="108" y="285" width="30" height="70" rx="6" fill="#475569" class="body-part" data-part="panturrilha_dir" onclick="toggleBodyPart(this)" /> <ellipse cx="77" cy="370" rx="18" ry="12" fill="#475569" class="body-part" data-part="pe_esq" onclick="toggleBodyPart(this)" /> <ellipse cx="123" cy="370" rx="18" ry="12" fill="#475569" class="body-part" data-part="pe_dir" onclick="toggleBodyPart(this)" /> <ellipse cx="100" cy="130" rx="15" ry="12" fill="#334155" class="body-part" data-part="lombar" onclick="toggleBodyPart(this)" />
+      </svg>
+     </div>
+     <div id="selected-parts" class="flex flex-wrap gap-2 mb-4 min-h-[40px]">
+      <span class="text-slate-500 text-sm">Nenhuma área selecionada</span>
+     </div>
+     <div id="pain-intensity-container" class="hidden">
+      <div class="flex justify-between mb-2">
+       <label class="text-slate-300">Intensidade da Dor</label> <span id="pain-intensity-value" class="text-red-400 font-semibold">5</span>
+      </div><input type="range" id="pain-intensity" min="1" max="10" value="5" class="w-full" oninput="updateSliderValue('pain-intensity')">
+      <div class="flex justify-between text-xs text-slate-500 mt-1"><span>Leve</span><span>Insuportável</span>
+      </div>
+     </div>
+     <div class="flex gap-3 mt-6">
+      <button onclick="prevStep(1)" class="flex-1 bg-slate-700 py-3 rounded-xl font-semibold hover:bg-slate-600 transition">Voltar</button> <button onclick="nextStep(3)" class="flex-1 accent-gradient py-3 rounded-xl font-semibold hover:opacity-90 transition">Continuar</button>
+     </div>
+    </div><!-- Step 3: Menstrual (Female Only) -->
+    <div id="step-3" class="questionnaire-step hidden card-glass rounded-2xl p-6 mb-4">
+     <h2 class="text-lg font-semibold mb-6 flex items-center gap-2"><span class="w-8 h-8 accent-gradient rounded-lg flex items-center justify-center text-sm font-bold">3</span> Ciclo Menstrual</h2>
+     <div class="space-y-4">
+      <div>
+       <label class="text-slate-300 block mb-2">Fase do Ciclo</label> <select id="menstrual-phase" class="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 focus:border-indigo-500 focus:outline-none"> <option value="nao_aplicavel">Não se aplica</option> <option value="menstruacao">Menstruação (Dias 1-5)</option> <option value="folicular">Fase Folicular (Dias 6-14)</option> <option value="ovulacao">Ovulação (Dias 14-16)</option> <option value="lutea">Fase Lútea (Dias 17-28)</option> <option value="nao_sei">Não sei</option> </select>
+      </div>
+      <div>
+       <label class="text-slate-300 block mb-2">Sintomas (selecione todos que se aplicam)</label>
+       <div class="grid grid-cols-2 gap-2">
+        <label class="flex items-center gap-2 bg-slate-700/50 p-3 rounded-lg cursor-pointer hover:bg-slate-700 transition"> <input type="checkbox" class="menstrual-symptom rounded" value="colicas"> Cólicas </label> <label class="flex items-center gap-2 bg-slate-700/50 p-3 rounded-lg cursor-pointer hover:bg-slate-700 transition"> <input type="checkbox" class="menstrual-symptom rounded" value="fadiga"> Fadiga Extra </label> <label class="flex items-center gap-2 bg-slate-700/50 p-3 rounded-lg cursor-pointer hover:bg-slate-700 transition"> <input type="checkbox" class="menstrual-symptom rounded" value="inchaco"> Inchaço </label> <label class="flex items-center gap-2 bg-slate-700/50 p-3 rounded-lg cursor-pointer hover:bg-slate-700 transition"> <input type="checkbox" class="menstrual-symptom rounded" value="dor_cabeca"> Dor de Cabeça </label> <label class="flex items-center gap-2 bg-slate-700/50 p-3 rounded-lg cursor-pointer hover:bg-slate-700 transition"> <input type="checkbox" class="menstrual-symptom rounded" value="humor"> Alteração de Humor </label> <label class="flex items-center gap-2 bg-slate-700/50 p-3 rounded-lg cursor-pointer hover:bg-slate-700 transition"> <input type="checkbox" class="menstrual-symptom rounded" value="nenhum"> Nenhum </label>
+       </div>
+      </div>
+     </div>
+     <div class="flex gap-3 mt-6">
+      <button onclick="prevStep(2)" class="flex-1 bg-slate-700 py-3 rounded-xl font-semibold hover:bg-slate-600 transition">Voltar</button> <button onclick="nextStep(4)" class="flex-1 accent-gradient py-3 rounded-xl font-semibold hover:opacity-90 transition">Continuar</button>
+     </div>
+    </div><!-- Step 4: Nutrition -->
+    <div id="step-4" class="questionnaire-step hidden card-glass rounded-2xl p-6 mb-4">
+     <h2 class="text-lg font-semibold mb-6 flex items-center gap-2"><span class="w-8 h-8 accent-gradient rounded-lg flex items-center justify-center text-sm font-bold">4</span> Nutrição e Hidratação</h2>
+     <div class="space-y-6">
+      <div>
+       <label class="text-slate-300 block mb-2">Quantas refeições fez ontem?</label>
+       <div class="flex gap-2">
+        {[1,2,3,4,5,6].map(n =&gt; ` <button type="button" class="meal-count-btn flex-1 bg-slate-700 py-3 rounded-xl font-semibold hover:bg-indigo-600 transition" data-value="${n}" onclick="selectMealCount(${n})">${n}</button> `).join('')}
+       </div>
+      </div>
+      <div>
+       <label class="text-slate-300 block mb-2">Consumo de Proteína</label> <select id="protein-intake" class="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 focus:border-indigo-500 focus:outline-none"> <option value="baixo">Baixo (pouca carne/ovos/legumes)</option> <option value="moderado">Moderado (1-2 porções)</option> <option value="alto">Alto (3+ porções)</option> <option value="suplementado">Suplementado (Whey/outros)</option> </select>
+      </div>
+      <div>
+       <label class="text-slate-300 block mb-2">Água consumida ontem (litros)</label> <input type="number" id="hydration-liters" min="0" max="10" step="0.25" value="2" class="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 focus:border-indigo-500 focus:outline-none">
+       <p id="hydration-target" class="text-sm text-slate-400 mt-2">Meta recomendada: calculando...</p>
+      </div>
+      <div>
+       <label class="text-slate-300 block mb-2">Suplementos utilizados</label>
+       <div class="grid grid-cols-2 gap-2">
+        <label class="flex items-center gap-2 bg-slate-700/50 p-3 rounded-lg cursor-pointer hover:bg-slate-700 transition"> <input type="checkbox" class="supplement-check rounded" value="whey"> Whey Protein </label> <label class="flex items-center gap-2 bg-slate-700/50 p-3 rounded-lg cursor-pointer hover:bg-slate-700 transition"> <input type="checkbox" class="supplement-check rounded" value="creatina"> Creatina </label> <label class="flex items-center gap-2 bg-slate-700/50 p-3 rounded-lg cursor-pointer hover:bg-slate-700 transition"> <input type="checkbox" class="supplement-check rounded" value="cafeina"> Cafeína/Pré-treino </label> <label class="flex items-center gap-2 bg-slate-700/50 p-3 rounded-lg cursor-pointer hover:bg-slate-700 transition"> <input type="checkbox" class="supplement-check rounded" value="vitaminas"> Vitaminas </label> <label class="flex items-center gap-2 bg-slate-700/50 p-3 rounded-lg cursor-pointer hover:bg-slate-700 transition"> <input type="checkbox" class="supplement-check rounded" value="omega3"> Ômega 3 </label> <label class="flex items-center gap-2 bg-slate-700/50 p-3 rounded-lg cursor-pointer hover:bg-slate-700 transition"> <input type="checkbox" class="supplement-check rounded" value="nenhum"> Nenhum </label>
+       </div>
+      </div>
+     </div>
+     <div class="flex gap-3 mt-6">
+      <button onclick="prevStep(3)" class="flex-1 bg-slate-700 py-3 rounded-xl font-semibold hover:bg-slate-600 transition">Voltar</button> <button onclick="nextStep(5)" class="flex-1 accent-gradient py-3 rounded-xl font-semibold hover:opacity-90 transition">Continuar</button>
+     </div>
+    </div><!-- Step 5: Training & Notes -->
+    <div id="step-5" class="questionnaire-step hidden card-glass rounded-2xl p-6 mb-4">
+     <h2 class="text-lg font-semibold mb-6 flex items-center gap-2"><span class="w-8 h-8 accent-gradient rounded-lg flex items-center justify-center text-sm font-bold">5</span> Treino e Observações</h2>
+     <div class="space-y-6">
+      <div>
+       <label class="text-slate-300 block mb-2">Carga de Treino Planejada Hoje</label> <select id="training-load" class="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 focus:border-indigo-500 focus:outline-none"> <option value="descanso">Descanso / Folga</option> <option value="leve">Leve (Recuperação)</option> <option value="moderado">Moderado</option> <option value="intenso">Intenso</option> <option value="muito_intenso">Muito Intenso (Competição)</option> </select>
+      </div>
+      <div>
+       <label class="text-slate-300 block mb-2">Observações para o Técnico</label> <textarea id="notes" rows="4" placeholder="Algo que queira comunicar? Lesões, preocupações, sugestões..." class="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 focus:border-indigo-500 focus:outline-none resize-none"></textarea>
+      </div>
+     </div>
+     <div class="flex gap-3 mt-6">
+      <button onclick="prevStep(4)" class="flex-1 bg-slate-700 py-3 rounded-xl font-semibold hover:bg-slate-600 transition">Voltar</button> <button onclick="submitQuestionnaire()" id="submit-btn" class="flex-1 accent-gradient py-3 rounded-xl font-semibold hover:opacity-90 transition">Enviar Respostas</button>
+     </div>
+    </div><!-- Success Message -->
+    <div id="success-message" class="hidden card-glass rounded-2xl p-8 text-center">
+     <div class="w-20 h-20 bg-emerald-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+      <svg class="w-10 h-10 text-emerald-400" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+      </svg>
+     </div>
+     <h2 class="text-2xl font-bold mb-2">Respostas Enviadas!</h2>
+     <p class="text-slate-400 mb-6">Obrigado por completar o questionário. Seu técnico receberá suas informações.</p>
+     <div id="wellness-summary" class="card-glass rounded-xl p-4 mb-6"></div>
+    </div>
+   </div><!-- Access Code Entry -->
+   <div id="access-entry" class="hidden flex items-center justify-center min-h-full p-4">
+    <div class="card-glass rounded-2xl p-8 w-full max-w-md text-center">
+     <div class="w-16 h-16 accent-gradient rounded-2xl flex items-center justify-center mx-auto mb-6">
+      <svg class="w-8 h-8" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+      </svg>
+     </div>
+     <h1 class="text-2xl font-bold mb-2">ELLEVEN Sports</h1>
+     <p class="text-slate-400 mb-6">Digite seu código de acesso</p><input type="text" id="access-code-input" placeholder="Ex: ABC123" class="w-full bg-slate-700 border border-slate-600 rounded-xl px-4 py-3 text-center text-2xl tracking-widest uppercase focus:border-indigo-500 focus:outline-none mb-4"> <button onclick="validateAccessCode()" class="w-full accent-gradient py-3 rounded-xl font-semibold hover:opacity-90 transition">Acessar</button>
+     <p id="access-error" class="text-red-400 text-sm mt-4 hidden">Código inválido. Verifique com seu técnico.</p>
+     <div class="mt-8 pt-6 border-t border-slate-700">
+      <p class="text-slate-500 text-sm mb-3">É técnico?</p><button onclick="showCoachLogin()" class="text-indigo-400 hover:text-indigo-300 font-semibold">Acessar Painel do Técnico</button>
+     </div>
+    </div>
+   </div>
+  </div>
+  <script>
+    // Global State
+    let allData = [];
+    let athletes = [];
+    let responses = [];
+    let currentAthlete = null;
+    let selectedBodyParts = [];
+    let selectedMealCount = 3;
+    let isCoach = false;
+    let currentStep = 1;
+    const totalSteps = 5;
+
+    // Config
+    const defaultConfig = {
+      system_title: 'ELLEVEN Sports',
+      coach_name: 'Técnico',
+      primary_color: '#6366f1',
+      secondary_color: '#1e293b',
+      text_color: '#f8fafc',
+      accent_color: '#8b5cf6',
+      surface_color: '#334155'
+    };
+
+    // Sport-specific multipliers for hydration and protein
+    const sportMultipliers = {
+      futebol: { hydration: 40, protein: 1.6 },
+      volei: { hydration: 38, protein: 1.5 },
+      basquete: { hydration: 42, protein: 1.6 },
+      natacao: { hydration: 35, protein: 1.7 },
+      atletismo: { hydration: 45, protein: 1.8 },
+      crossfit: { hydration: 50, protein: 2.0 },
+      musculacao: { hydration: 40, protein: 2.0 },
+      ciclismo: { hydration: 50, protein: 1.5 },
+      corrida: { hydration: 45, protein: 1.6 },
+      artes_marciais: { hydration: 42, protein: 1.8 },
+      ginastica: { hydration: 35, protein: 1.4 },
+      tenis: { hydration: 40, protein: 1.5 },
+      handebol: { hydration: 42, protein: 1.6 },
+      rugby: { hydration: 45, protein: 1.8 },
+      outro: { hydration: 40, protein: 1.6 }
+    };
+
+    // Body part names
+    const bodyPartNames = {
+      cabeca: 'Cabeça', pescoco: 'Pescoço', torso: 'Tronco/Peito',
+      braco_esq: 'Braço Esquerdo', braco_dir: 'Braço Direito',
+      antebraco_esq: 'Antebraço Esq', antebraco_dir: 'Antebraço Dir',
+      mao_esq: 'Mão Esquerda', mao_dir: 'Mão Direita',
+      quadril: 'Quadril/Lombar', lombar: 'Região Lombar',
+      coxa_esq: 'Coxa Esquerda', coxa_dir: 'Coxa Direita',
+      panturrilha_esq: 'Panturrilha Esq', panturrilha_dir: 'Panturrilha Dir',
+      pe_esq: 'Pé Esquerdo', pe_dir: 'Pé Direito'
+    };
+
+    // Generate unique athlete code
+    function generateAthleteCode() {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+      let code = '';
+      for (let i = 0; i < 6; i++) {
+        code += chars.charAt(Math.floor(Math.random() * chars.length));
+      }
+      return code;
+    }
+
+    // Calculate hydration target
+    function calculateHydrationTarget(weight, sport) {
+      const multiplier = sportMultipliers[sport]?.hydration || 40;
+      return ((weight * multiplier) / 1000).toFixed(1);
+    }
+
+    // Calculate protein target
+    function calculateProteinTarget(weight, sport) {
+      const multiplier = sportMultipliers[sport]?.protein || 1.6;
+      return (weight * multiplier).toFixed(0);
+    }
+
+    // Calculate wellness score
+    function calculateWellnessScore(data) {
+      const sleep = (data.sleep_quality / 10) * 20;
+      const sleepHours = Math.min(data.sleep_hours / 8, 1) * 20;
+      const fatigue = ((10 - data.fatigue) / 10) * 20;
+      const stress = ((10 - data.stress) / 10) * 20;
+      const mood = (data.mood / 10) * 20;
+      return Math.round(sleep + sleepHours + fatigue + stress + mood);
+    }
+
+    // Detect RED-S risk with detailed flags
+    function detectREDSRisk(data) {
+      const flags = [];
+      let riskLevel = 'baixo';
+      
+      // Low energy indicators
+      if (data.fatigue >= 8) {
+        flags.push({ type: 'fatiga_alta', label: 'Fadiga Extrema', severity: 'high' });
+      } else if (data.fatigue >= 7) {
+        flags.push({ type: 'fadiga_moderada', label: 'Fadiga Elevada', severity: 'medium' });
+      }
+      
+      if (data.meals_count <= 2) {
+        flags.push({ type: 'refeicoes_baixas', label: 'Pouca Alimentação', severity: 'high' });
+      }
+      
+      if (data.protein_intake === 'baixo') {
+        flags.push({ type: 'proteina_baixa', label: 'Proteína Insuficiente', severity: 'high' });
+      }
+      
+      if (data.hydration_liters < data.hydration_target * 0.6) {
+        flags.push({ type: 'hidratacao_baixa', label: 'Hidratação Crítica', severity: 'high' });
+      } else if (data.hydration_liters < data.hydration_target * 0.8) {
+        flags.push({ type: 'hidratacao_moderada', label: 'Hidratação Baixa', severity: 'medium' });
+      }
+      
+      // Female-specific indicators
+      if (data.gender === 'feminino') {
+        if (data.menstrual_phase === 'menstruacao' && data.menstrual_symptoms?.includes('fadiga')) {
+          flags.push({ type: 'ciclo_fadiga', label: 'Fadiga Menstrual + Treino', severity: 'medium' });
+        }
+        
+        if (data.menstrual_symptoms?.includes('colicas') && (data.fatigue >= 7 || data.stress >= 8)) {
+          flags.push({ type: 'ciclo_stress', label: 'Cólicas + Stress Elevado', severity: 'medium' });
+        }
+      }
+      
+      // Wellness indicators
+      if (data.wellness_score < 40) {
+        flags.push({ type: 'wellness_critica', label: 'Wellness Crítico', severity: 'high' });
+      } else if (data.wellness_score < 50) {
+        flags.push({ type: 'wellness_baixa', label: 'Wellness Baixo', severity: 'medium' });
+      }
+      
+      if (data.sleep_hours < 5) {
+        flags.push({ type: 'sono_critico', label: 'Sono Crítico (<5h)', severity: 'high' });
+      } else if (data.sleep_hours < 6) {
+        flags.push({ type: 'sono_baixo', label: 'Sono Insuficiente (<6h)', severity: 'medium' });
+      }
+      
+      if (data.stress >= 9) {
+        flags.push({ type: 'stress_critico', label: 'Stress Crítico', severity: 'high' });
+      } else if (data.stress >= 8) {
+        flags.push({ type: 'stress_elevado', label: 'Stress Elevado', severity: 'medium' });
+      }
+      
+      if (data.muscle_soreness >= 9) {
+        flags.push({ type: 'doms_critico', label: 'DOMS Crítico', severity: 'high' });
+      } else if (data.muscle_soreness >= 7) {
+        flags.push({ type: 'doms_elevado', label: 'DOMS Elevado', severity: 'medium' });
+      }
+      
+      // Combination RED-S indicators
+      const highSeverityCount = flags.filter(f => f.severity === 'high').length;
+      const allSeverityCount = flags.length;
+      
+      if (highSeverityCount >= 3 || (allSeverityCount >= 5 && highSeverityCount >= 1)) {
+        riskLevel = 'alto';
+      } else if (allSeverityCount >= 3 || (allSeverityCount >= 2 && highSeverityCount >= 1)) {
+        riskLevel = 'medio';
+      }
+      
+      data.red_s_flags = flags;
+      data.flags_count = allSeverityCount;
+      
+      return riskLevel;
+    }
+
+    // Data Handler
+    const dataHandler = {
+      onDataChanged(data) {
+        allData = data;
+        athletes = data.filter(d => d.type === 'athlete');
+        responses = data.filter(d => d.type === 'response');
+        
+        if (isCoach) {
+          renderDashboard();
+        }
+      }
+    };
+
+    // Initialize SDK
+    async function initApp() {
+      try {
+        const result = await window.dataSdk.init(dataHandler);
+        if (!result.isOk) {
+          console.error('Failed to initialize data SDK');
+        }
+      } catch (e) {
+        console.error('SDK init error:', e);
+      }
+
+      // Initialize Element SDK
+      if (window.elementSdk) {
+        window.elementSdk.init({
+          defaultConfig,
+          onConfigChange: async (config) => {
+            document.getElementById('main-title').textContent = config.system_title || defaultConfig.system_title;
+            document.getElementById('coach-greeting').textContent = `Painel do ${config.coach_name || defaultConfig.coach_name}`;
+          },
+          mapToCapabilities: (config) => ({
+            recolorables: [
+              { get: () => config.primary_color || defaultConfig.primary_color, set: (v) => window.elementSdk.setConfig({ primary_color: v }) },
+              { get: () => config.secondary_color || defaultConfig.secondary_color, set: (v) => window.elementSdk.setConfig({ secondary_color: v }) },
+              { get: () => config.text_color || defaultConfig.text_color, set: (v) => window.elementSdk.setConfig({ text_color: v }) },
+              { get: () => config.accent_color || defaultConfig.accent_color, set: (v) => window.elementSdk.setConfig({ accent_color: v }) },
+              { get: () => config.surface_color || defaultConfig.surface_color, set: (v) => window.elementSdk.setConfig({ surface_color: v }) }
+            ],
+            borderables: [],
+            fontEditable: undefined,
+            fontSizeable: undefined
+          }),
+          mapToEditPanelValues: (config) => new Map([
+            ['system_title', config.system_title || defaultConfig.system_title],
+            ['coach_name', config.coach_name || defaultConfig.coach_name]
+          ])
+        });
+      }
+
+      // Check URL for access code
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      
+      document.getElementById('loading-screen').classList.add('hidden');
+      
+      if (code) {
+        setTimeout(() => validateAccessCodeFromUrl(code), 500);
+      } else {
+        document.getElementById('access-entry').classList.remove('hidden');
+      }
+    }
+
+    // Show coach dashboard
+    function showCoachLogin() {
+      isCoach = true;
+      document.getElementById('access-entry').classList.add('hidden');
+      document.getElementById('coach-dashboard').classList.remove('hidden');
+      renderDashboard();
+    }
+
+    // Validate access code from URL
+    function validateAccessCodeFromUrl(code) {
+      const athlete = athletes.find(a => a.athlete_id === code.toUpperCase());
+      if (athlete) {
+        currentAthlete = athlete;
+        showQuestionnaire();
+      } else {
+        document.getElementById('access-entry').classList.remove('hidden');
+        document.getElementById('access-code-input').value = code;
+      }
+    }
+
+    // Validate access code
+    function validateAccessCode() {
+      const code = document.getElementById('access-code-input').value.trim().toUpperCase();
+      const athlete = athletes.find(a => a.athlete_id === code);
+      
+      if (athlete) {
+        currentAthlete = athlete;
+        document.getElementById('access-error').classList.add('hidden');
+        showQuestionnaire();
+      } else {
+        document.getElementById('access-error').classList.remove('hidden');
+      }
+    }
+
+    // Show questionnaire
+    function showQuestionnaire() {
+      document.getElementById('access-entry').classList.add('hidden');
+      document.getElementById('athlete-questionnaire').classList.remove('hidden');
+      document.getElementById('questionnaire-athlete-name').textContent = `Olá, ${currentAthlete.athlete_name}!`;
+      
+      // Calculate targets
+      const hydrationTarget = calculateHydrationTarget(currentAthlete.weight, currentAthlete.sport);
+      document.getElementById('hydration-target').textContent = `Meta recomendada: ${hydrationTarget}L para ${currentAthlete.sport}`;
+      
+      // Show/hide menstrual step based on gender
+      if (currentAthlete.gender === 'masculino') {
+        document.getElementById('step-3').dataset.skip = 'true';
+      }
+      
+      updateProgress();
+    }
+
+    // Render dashboard
+    function renderDashboard() {
+      // Update stats
+      document.getElementById('stat-athletes').textContent = athletes.length;
+      
+      const today = new Date().toDateString();
+      const todayResponses = responses.filter(r => new Date(r.created_at).toDateString() === today);
+      document.getElementById('stat-responses').textContent = todayResponses.length;
+      
+      const redsAlerts = responses.filter(r => r.reds_risk === 'alto' || r.reds_risk === 'medio');
+      document.getElementById('stat-reds').textContent = redsAlerts.length;
+      
+      const avgWellness = responses.length > 0 
+        ? Math.round(responses.reduce((sum, r) => sum + (r.wellness_score || 0), 0) / responses.length)
+        : '-';
+      document.getElementById('stat-wellness').textContent = avgWellness === '-' ? '-' : `${avgWellness}%`;
+      
+      // Update sport filter
+      const sports = [...new Set(athletes.map(a => a.sport))];
+      const filterSelect = document.getElementById('filter-sport');
+      filterSelect.innerHTML = '<option value="">Todas Modalidades</option>' + 
+        sports.map(s => `<option value="${s}">${s.charAt(0).toUpperCase() + s.slice(1)}</option>`).join('');
+      
+      // Render athletes list
+      renderAthletesList();
+    }
+
+    // Render athletes list
+    function renderAthletesList(filterSport = '') {
+      const container = document.getElementById('athletes-list');
+      let filteredAthletes = athletes;
+      
+      if (filterSport) {
+        filteredAthletes = athletes.filter(a => a.sport === filterSport);
+      }
+      
+      if (filteredAthletes.length === 0) {
+        container.innerHTML = '<p class="text-slate-400 text-center py-8">Nenhum atleta cadastrado. Clique em "Novo Atleta" para começar.</p>';
+        return;
+      }
+      
+      container.innerHTML = filteredAthletes.map(athlete => {
+        const athleteResponses = responses.filter(r => r.athlete_id === athlete.athlete_id);
+        const lastResponse = athleteResponses.sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0];
+        const today = new Date().toDateString();
+        const respondedToday = lastResponse && new Date(lastResponse.created_at).toDateString() === today;
+        
+        let statusClass = 'bg-slate-600';
+        let statusText = 'Aguardando';
+        
+        if (respondedToday) {
+          if (lastResponse.reds_risk === 'alto') {
+            statusClass = 'risk-high';
+            statusText = 'Alerta RED-S';
+          } else if (lastResponse.reds_risk === 'medio') {
+            statusClass = 'risk-medium';
+            statusText = 'Atenção';
+          } else {
+            statusClass = 'risk-low';
+            statusText = 'OK';
+          }
+        }
+        
+        return `
+          <div class="flex items-center justify-between p-4 bg-slate-700/50 rounded-xl hover:bg-slate-700 transition cursor-pointer" onclick="showAthleteDetail('${athlete.athlete_id}')">
+            <div class="flex items-center gap-4">
+              <div class="w-12 h-12 rounded-full accent-gradient flex items-center justify-center font-bold text-lg">
+                ${athlete.athlete_name.charAt(0)}
+              </div>
+              <div>
+                <h3 class="font-semibold">${athlete.athlete_name}</h3>
+                <p class="text-sm text-slate-400">${athlete.sport.charAt(0).toUpperCase() + athlete.sport.slice(1)} • ${athlete.weight}kg • ${athlete.gender === 'feminino' ? '♀' : '♂'}</p>
+              </div>
+            </div>
+            <div class="flex items-center gap-4">
+              <div class="text-right hidden md:block">
+                <p class="text-sm text-slate-400">Código: <span class="font-mono text-indigo-400">${athlete.athlete_id}</span></p>
+                <p class="text-xs text-slate-500">${athleteResponses.length} respostas</p>
+              </div>
+              <span class="px-3 py-1 rounded-full text-xs font-semibold ${statusClass}">${statusText}</span>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    // Filter athletes
+    function filterAthletes() {
+      const sport = document.getElementById('filter-sport').value;
+      renderAthletesList(sport);
+    }
+
+    // Show athlete detail
+    function showAthleteDetail(athleteId) {
+      const athlete = athletes.find(a => a.athlete_id === athleteId);
+      if (!athlete) return;
+      
+      const athleteResponses = responses.filter(r => r.athlete_id === athleteId)
+        .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+      
+      document.getElementById('detail-athlete-name').textContent = athlete.athlete_name;
+      
+      const hydrationTarget = calculateHydrationTarget(athlete.weight, athlete.sport);
+      const proteinTarget = calculateProteinTarget(athlete.weight, athlete.sport);
+      
+      const content = document.getElementById('athlete-detail-content');
+      content.innerHTML = `
+        <div class="grid md:grid-cols-2 gap-6 mb-6">
+          <div class="card-glass rounded-xl p-4">
+            <h3 class="font-semibold mb-3 text-indigo-400">Informações</h3>
+            <div class="space-y-2 text-sm">
+              <p><span class="text-slate-400">Modalidade:</span> ${athlete.sport.charAt(0).toUpperCase() + athlete.sport.slice(1)}</p>
+              <p><span class="text-slate-400">Peso:</span> ${athlete.weight}kg</p>
+              <p><span class="text-slate-400">Sexo:</span> ${athlete.gender === 'feminino' ? 'Feminino' : 'Masculino'}</p>
+              <p><span class="text-slate-400">Código:</span> <span class="font-mono text-indigo-400">${athlete.athlete_id}</span></p>
+            </div>
+          </div>
+          <div class="card-glass rounded-xl p-4">
+            <h3 class="font-semibold mb-3 text-emerald-400">Metas Calculadas</h3>
+            <div class="space-y-2 text-sm">
+              <p><span class="text-slate-400">Hidratação:</span> ${hydrationTarget}L/dia</p>
+              <p><span class="text-slate-400">Proteína:</span> ${proteinTarget}g/dia</p>
+              <p class="text-xs text-slate-500 mt-2">*Baseado na modalidade e peso</p>
+            </div>
+          </div>
+        </div>
+        
+        <div class="mb-4">
+          <h3 class="font-semibold mb-3">Link de Acesso do Atleta</h3>
+          <div class="flex gap-2">
+            <input type="text" value="${window.location.origin}${window.location.pathname}?code=${athlete.athlete_id}" readonly class="flex-1 bg-slate-700 border border-slate-600 rounded-xl px-4 py-2 text-sm">
+            <button onclick="copyAthleteLink('${athlete.athlete_id}')" class="accent-gradient px-4 py-2 rounded-xl font-semibold hover:opacity-90 transition">Copiar</button>
+          </div>
+        </div>
+        
+        <h3 class="font-semibold mb-3">Histórico de Respostas</h3>
+        ${athleteResponses.length === 0 ? '<p class="text-slate-400 text-center py-4">Nenhuma resposta ainda</p>' : `
+          <div class="space-y-3 max-h-96 overflow-y-auto">
+            ${athleteResponses.slice(0, 10).map(r => `
+              <div class="bg-slate-700/50 rounded-xl p-4">
+                <div class="flex justify-between items-start mb-3">
+                  <span class="text-sm text-slate-400">${new Date(r.created_at).toLocaleDateString('pt-BR', { weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                  <span class="px-2 py-1 rounded text-xs font-semibold ${r.reds_risk === 'alto' ? 'risk-high' : r.reds_risk === 'medio' ? 'risk-medium' : 'risk-low'}">${r.reds_risk === 'alto' ? 'RED-S Alto' : r.reds_risk === 'medio' ? 'Atenção' : 'Normal'}</span>
+                </div>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <p class="text-slate-400 text-xs">Wellness</p>
+                    <p class="font-semibold text-lg ${r.wellness_score >= 70 ? 'text-emerald-400' : r.wellness_score >= 50 ? 'text-amber-400' : 'text-red-400'}">${r.wellness_score}%</p>
+                  </div>
+                  <div>
+                    <p class="text-slate-400 text-xs">Sono</p>
+                    <p class="font-semibold">${r.sleep_hours}h (${r.sleep_quality}/10)</p>
+                  </div>
+                  <div>
+                    <p class="text-slate-400 text-xs">Fadiga</p>
+                    <p class="font-semibold">${r.fatigue}/10</p>
+                  </div>
+                  <div>
+                    <p class="text-slate-400 text-xs">Estresse</p>
+                    <p class="font-semibold">${r.stress}/10</p>
+                  </div>
+                </div>
+                ${r.body_pain_areas && r.body_pain_areas !== 'nenhuma' ? `<p class="text-sm mt-2"><span class="text-slate-400">Dor:</span> ${r.body_pain_areas} (${r.pain_intensity}/10)</p>` : ''}
+                ${r.notes ? `<p class="text-sm mt-2 p-2 bg-slate-800 rounded"><span class="text-slate-400">Nota:</span> ${r.notes}</p>` : ''}
+                ${r.red_s_flags && r.red_s_flags.length > 0 ? `
+                  <div class="mt-3 pt-3 border-t border-slate-600">
+                    <p class="text-xs text-slate-400 font-semibold mb-2">🚨 RED-S Flags Detectadas:</p>
+                    <div class="flex flex-wrap gap-2">
+                      ${r.red_s_flags.map(flag => {
+                        const bgColor = flag.severity === 'high' ? 'bg-red-500/20 text-red-300 border-red-500/30' : 'bg-amber-500/20 text-amber-300 border-amber-500/30';
+                        return `<span class="text-xs px-2 py-1 rounded border ${bgColor}">${flag.label}</span>`;
+                      }).join('')}
+                    </div>
+                  </div>
+                ` : ''}
+              </div>
+            `).join('')}
+          </div>
+        `}
+        
+        <div class="flex gap-3 mt-6">
+          <button onclick="deleteAthlete('${athlete.__backendId}')" class="flex-1 bg-red-600/20 text-red-400 border border-red-600/50 px-4 py-3 rounded-xl font-semibold hover:bg-red-600/30 transition">Remover Atleta</button>
+        </div>
+      `;
+      
+      document.getElementById('athlete-detail-modal').classList.remove('hidden');
+    }
+
+    // Copy athlete link
+    function copyAthleteLink(athleteId) {
+      const link = `${window.location.origin}${window.location.pathname}?code=${athleteId}`;
+      navigator.clipboard.writeText(link).then(() => {
+        const btn = event.target;
+        btn.textContent = 'Copiado!';
+        setTimeout(() => btn.textContent = 'Copiar', 2000);
+      });
+    }
+
+    // Close athlete detail
+    function closeAthleteDetail() {
+      document.getElementById('athlete-detail-modal').classList.add('hidden');
+    }
+
+    // Show add athlete modal
+    function showAddAthleteModal() {
+      document.getElementById('add-athlete-modal').classList.remove('hidden');
+    }
+
+    // Close add athlete modal
+    function closeAddAthleteModal() {
+      document.getElementById('add-athlete-modal').classList.add('hidden');
+      document.getElementById('add-athlete-form').reset();
+    }
+
+    // Delete athlete
+    async function deleteAthlete(backendId) {
+      const athlete = athletes.find(a => a.__backendId === backendId);
+      if (!athlete) return;
+      
+      const confirmBtn = event.target;
+      if (confirmBtn.dataset.confirming !== 'true') {
+        confirmBtn.dataset.confirming = 'true';
+        confirmBtn.textContent = 'Confirmar Remoção?';
+        confirmBtn.classList.add('bg-red-600');
+        setTimeout(() => {
+          confirmBtn.dataset.confirming = 'false';
+          confirmBtn.textContent = 'Remover Atleta';
+          confirmBtn.classList.remove('bg-red-600');
+        }, 3000);
+        return;
+      }
+      
+      confirmBtn.textContent = 'Removendo...';
+      confirmBtn.disabled = true;
+      
+      const result = await window.dataSdk.delete(athlete);
+      if (result.isOk) {
+        closeAthleteDetail();
+      } else {
+        confirmBtn.textContent = 'Erro ao remover';
+        setTimeout(() => {
+          confirmBtn.textContent = 'Remover Atleta';
+          confirmBtn.disabled = false;
+        }, 2000);
+      }
+    }
+
+    // Add athlete form submission
+    document.getElementById('add-athlete-form').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      if (athletes.length >= 999) {
+        const btn = document.getElementById('add-athlete-btn');
+        btn.textContent = 'Limite atingido (999)';
+        setTimeout(() => btn.textContent = 'Cadastrar', 2000);
+        return;
+      }
+      
+      const btn = document.getElementById('add-athlete-btn');
+      btn.textContent = 'Cadastrando...';
+      btn.disabled = true;
+      
+      const athleteData = {
+        type: 'athlete',
+        athlete_id: generateAthleteCode(),
+        athlete_name: document.getElementById('new-athlete-name').value,
+        sport: document.getElementById('new-athlete-sport').value,
+        gender: document.getElementById('new-athlete-gender').value,
+        weight: parseFloat(document.getElementById('new-athlete-weight').value),
+        created_at: new Date().toISOString()
+      };
+      
+      const result = await window.dataSdk.create(athleteData);
+      
+      if (result.isOk) {
+        closeAddAthleteModal();
+      } else {
+        btn.textContent = 'Erro. Tente novamente.';
+      }
+      
+      btn.disabled = false;
+      setTimeout(() => btn.textContent = 'Cadastrar', 2000);
+    });
+
+    // Questionnaire functions
+    function updateSliderValue(id) {
+      const slider = document.getElementById(id);
+      const valueSpan = document.getElementById(id + '-value');
+      if (valueSpan) valueSpan.textContent = slider.value;
+    }
+
+    function toggleBodyPart(element) {
+      const part = element.dataset.part;
+      element.classList.toggle('selected');
+      
+      if (element.classList.contains('selected')) {
+        element.setAttribute('fill', '#ef4444');
+        if (!selectedBodyParts.includes(part)) {
+          selectedBodyParts.push(part);
+        }
+      } else {
+        element.setAttribute('fill', '#475569');
+        selectedBodyParts = selectedBodyParts.filter(p => p !== part);
+      }
+      
+      updateSelectedPartsDisplay();
+    }
+
+    function updateSelectedPartsDisplay() {
+      const container = document.getElementById('selected-parts');
+      const intensityContainer = document.getElementById('pain-intensity-container');
+      
+      if (selectedBodyParts.length === 0) {
+        container.innerHTML = '<span class="text-slate-500 text-sm">Nenhuma área selecionada</span>';
+        intensityContainer.classList.add('hidden');
+      } else {
+        container.innerHTML = selectedBodyParts.map(part => 
+          `<span class="bg-red-500/20 text-red-400 px-3 py-1 rounded-full text-sm">${bodyPartNames[part]}</span>`
+        ).join('');
+        intensityContainer.classList.remove('hidden');
+      }
+    }
+
+    function selectMealCount(count) {
+      selectedMealCount = count;
+      document.querySelectorAll('.meal-count-btn').forEach(btn => {
+        btn.classList.remove('bg-indigo-600');
+        btn.classList.add('bg-slate-700');
+      });
+      event.target.classList.remove('bg-slate-700');
+      event.target.classList.add('bg-indigo-600');
+    }
+
+    function updateProgress() {
+      const progress = ((currentStep - 1) / totalSteps) * 100;
+      document.getElementById('progress-bar').style.width = `${progress}%`;
+      document.getElementById('progress-text').textContent = `${Math.round(progress)}%`;
+    }
+
+    function nextStep(step) {
+      // Skip menstrual step for males
+      if (step === 3 && currentAthlete.gender === 'masculino') {
+        step = 4;
+      }
+      
+      document.querySelectorAll('.questionnaire-step').forEach(s => s.classList.add('hidden'));
+      document.getElementById(`step-${step}`).classList.remove('hidden');
+      currentStep = step;
+      updateProgress();
+    }
+
+    function prevStep(step) {
+      // Skip menstrual step for males
+      if (step === 3 && currentAthlete.gender === 'masculino') {
+        step = 2;
+      }
+      
+      document.querySelectorAll('.questionnaire-step').forEach(s => s.classList.add('hidden'));
+      document.getElementById(`step-${step}`).classList.remove('hidden');
+      currentStep = step;
+      updateProgress();
+    }
+
+    async function submitQuestionnaire() {
+      const btn = document.getElementById('submit-btn');
+      btn.textContent = 'Enviando...';
+      btn.disabled = true;
+      
+      // Collect all data
+      const sleepQuality = parseInt(document.getElementById('sleep-quality').value);
+      const sleepHours = parseFloat(document.getElementById('sleep-hours').value);
+      const fatigue = parseInt(document.getElementById('fatigue').value);
+      const stress = parseInt(document.getElementById('stress').value);
+      const muscleSoreness = parseInt(document.getElementById('muscle-soreness').value);
+      const mood = parseInt(document.getElementById('mood').value);
+      
+      const menstrualPhase = document.getElementById('menstrual-phase').value;
+      const menstrualSymptoms = Array.from(document.querySelectorAll('.menstrual-symptom:checked')).map(c => c.value).join(',');
+      
+      const proteinIntake = document.getElementById('protein-intake').value;
+      const hydrationLiters = parseFloat(document.getElementById('hydration-liters').value);
+      const supplements = Array.from(document.querySelectorAll('.supplement-check:checked')).map(c => c.value).join(',');
+      
+      const trainingLoad = document.getElementById('training-load').value;
+      const notes = document.getElementById('notes').value;
+      
+      const painIntensity = selectedBodyParts.length > 0 ? parseInt(document.getElementById('pain-intensity').value) : 0;
+      
+      // Calculate targets
+      const hydrationTarget = parseFloat(calculateHydrationTarget(currentAthlete.weight, currentAthlete.sport));
+      const proteinTarget = parseInt(calculateProteinTarget(currentAthlete.weight, currentAthlete.sport));
+      
+      // Calculate wellness score
+      const wellnessScore = calculateWellnessScore({
+        sleep_quality: sleepQuality,
+        sleep_hours: sleepHours,
+        fatigue: fatigue,
+        stress: stress,
+        mood: mood
+      });
+      
+      // Prepare response data
+      const responseData = {
+        type: 'response',
+        athlete_id: currentAthlete.athlete_id,
+        athlete_name: currentAthlete.athlete_name,
+        sport: currentAthlete.sport,
+        gender: currentAthlete.gender,
+        weight: currentAthlete.weight,
+        created_at: new Date().toISOString(),
+        sleep_quality: sleepQuality,
+        sleep_hours: sleepHours,
+        fatigue: fatigue,
+        stress: stress,
+        muscle_soreness: muscleSoreness,
+        mood: mood,
+        body_pain_areas: selectedBodyParts.length > 0 ? selectedBodyParts.join(',') : 'nenhuma',
+        pain_intensity: painIntensity,
+        menstrual_phase: menstrualPhase,
+        menstrual_symptoms: menstrualSymptoms,
+        meals_count: selectedMealCount,
+        protein_intake: proteinIntake,
+        hydration_liters: hydrationLiters,
+        supplements: supplements,
+        training_load: trainingLoad,
+        notes: notes,
+        wellness_score: wellnessScore,
+        hydration_target: hydrationTarget,
+        protein_target: proteinTarget
+      };
+      
+      // Detect RED-S risk
+      responseData.reds_risk = detectREDSRisk(responseData);
+      
+      const result = await window.dataSdk.create(responseData);
+      
+      if (result.isOk) {
+        // Show success
+        document.querySelectorAll('.questionnaire-step').forEach(s => s.classList.add('hidden'));
+        document.getElementById('success-message').classList.remove('hidden');
+        document.getElementById('progress-bar').style.width = '100%';
+        document.getElementById('progress-text').textContent = '100%';
+        
+        // Show summary
+        document.getElementById('wellness-summary').innerHTML = `
+          <div class="grid grid-cols-2 gap-4">
+            <div class="text-center">
+              <p class="text-slate-400 text-sm">Wellness Score</p>
+              <p class="text-3xl font-bold ${wellnessScore >= 70 ? 'text-emerald-400' : wellnessScore >= 50 ? 'text-amber-400' : 'text-red-400'}">${wellnessScore}%</p>
+            </div>
+            <div class="text-center">
+              <p class="text-slate-400 text-sm">Status</p>
+              <p class="text-lg font-semibold ${responseData.reds_risk === 'baixo' ? 'text-emerald-400' : responseData.reds_risk === 'medio' ? 'text-amber-400' : 'text-red-400'}">
+                ${responseData.reds_risk === 'baixo' ? '✓ Normal' : responseData.reds_risk === 'medio' ? '⚠ Atenção' : '⚠ Alerta RED-S'}
+              </p>
+            </div>
+          </div>
+          <div class="mt-4 pt-4 border-t border-slate-700">
+            <p class="text-sm text-slate-400">Hidratação: ${hydrationLiters}L de ${hydrationTarget}L recomendados</p>
+            <div class="h-2 bg-slate-700 rounded-full mt-1 overflow-hidden">
+              <div class="h-full ${hydrationLiters >= hydrationTarget ? 'bg-emerald-500' : 'bg-amber-500'}" style="width: ${Math.min((hydrationLiters / hydrationTarget) * 100, 100)}%"></div>
+            </div>
+          </div>
+        `;
+      } else {
+        btn.textContent = 'Erro. Tente novamente.';
+        btn.disabled = false;
+        setTimeout(() => btn.textContent = 'Enviar Respostas', 2000);
+      }
+    }
+
+    // Initialize
+    initApp();
+  </script>
+ <script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'9d1269f290c5625e',t:'MTc3MTYzNjc0OS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
